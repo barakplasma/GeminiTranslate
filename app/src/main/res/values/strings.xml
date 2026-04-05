@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name" translatable="false">Translate You</string>
+    <string name="app_name" translatable="false">Gemini Translate</string>
     <!-- Dialog -->
     <string name="okay">Okay</string>
     <string name="cancel">Cancel</string>

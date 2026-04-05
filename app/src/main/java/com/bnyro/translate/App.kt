@@ -40,8 +40,8 @@ class App : Application() {
         SpeechHelper.initTTS(this)
 
         val settingsProvider = EnginePreferencesProviderImpl()
-        translationEngines = TranslationEngines.getAllEngines(settingsProvider) +
-            listOf(GeminiNanoEngine(settingsProvider))
+        translationEngines = listOf(GeminiNanoEngine(settingsProvider)) +
+            TranslationEngines.getAllEngines(settingsProvider)
 
         // initialize all translation engines
         updateAllTranslationEngines()
