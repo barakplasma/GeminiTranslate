@@ -55,8 +55,7 @@ class MhEngine(settingsProvider: EngineSettingsProvider) : TranslationEngine(set
         "deepl",
         "duckduckgo",
         "mymemory",
-        "watson",
-        "yandex"
+        "watson"
     )
 
     override suspend fun translate(query: String, source: String, target: String): Translation {

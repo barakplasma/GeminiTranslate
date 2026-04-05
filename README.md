@@ -61,7 +61,6 @@ Download the latest release from the [**GitHub Releases**](https://github.com/ba
 ### Proprietary
 * <a href="https://www.deepl.com/translator">DeepL translator®</a>.
 * <a href="https://mymemory.translated.net/">MyMemory translator®</a>.
-* <a href="https://translate.yandex.com/">Yandex®</a>
 * <a href="https://en.pons.com/translate">PONS®</a>
 * <a href="https://glosbe.com/">Glosbe®</a>
 * <a href="https://laratranslate.com/translate">LaraTranslate®</a>

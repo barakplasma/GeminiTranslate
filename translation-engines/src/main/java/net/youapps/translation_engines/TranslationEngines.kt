@@ -32,7 +32,6 @@ import net.youapps.translation_engines.or.OneRingEngine
 import net.youapps.translation_engines.po.PonsEngine
 import net.youapps.translation_engines.st.STEngine
 import net.youapps.translation_engines.wm.WmEngine
-import net.youapps.translation_engines.ya.YandexEngine
 
 object TranslationEngines {
     fun getAllEngines(settingsProvider: EngineSettingsProvider) = listOf(
@@ -44,7 +43,6 @@ object TranslationEngines {
         DeeplBrowserEngine(settingsProvider),
         KagiEngine(settingsProvider),
         MMEngine(settingsProvider),
-        YandexEngine(settingsProvider),
         STEngine(settingsProvider),
         WmEngine(settingsProvider),
         GlEngine(settingsProvider),
