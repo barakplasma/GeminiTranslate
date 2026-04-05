@@ -1,25 +1,34 @@
 <!-- ---------- Header ---------- -->
 <div align="center">
-  <img width="200" height="200"src="fastlane/metadata/android/en-US/images/icon.png">
-  <h1>Translate You</h1>
-<p>Privacy focused translator app built with MD3.</p>
+  <img width="200" height="200" src="fastlane/metadata/android/en-US/images/icon.png">
+  <h1>LocalTranslate</h1>
+<p>Privacy-focused translator app with on-device AI by default.</p>
 
 <!-- ---------- Badges ---------- -->
   <div align="center">
-    <img alt="License" src="https://img.shields.io/github/license/you-apps/TranslateYou?color=c3e7ff&style=flat-square">
-    <img alt="Downloads" src="https://img.shields.io/github/downloads/you-apps/TranslateYou/total.svg?color=c3e7ff&style=flat-square">
-    <img alt="Last commit" src="https://img.shields.io/github/last-commit/you-apps/TranslateYou?color=c3e7ff&style=flat-square">
-    <img alt="Repo size" src="https://img.shields.io/github/repo-size/you-apps/TranslateYou?color=c3e7ff&style=flat-square">
-    <img alt="Stars" src="https://img.shields.io/github/stars/you-apps/TranslateYou?color=c3e7ff&style=flat-square">
+    <img alt="License" src="https://img.shields.io/github/license/barakplasma/LocalTranslate?color=c3e7ff&style=flat-square">
+    <img alt="Last commit" src="https://img.shields.io/github/last-commit/barakplasma/LocalTranslate?color=c3e7ff&style=flat-square">
+    <img alt="Repo size" src="https://img.shields.io/github/repo-size/barakplasma/LocalTranslate?color=c3e7ff&style=flat-square">
+    <img alt="Stars" src="https://img.shields.io/github/stars/barakplasma/LocalTranslate?color=c3e7ff&style=flat-square">
     <br>
 </div>
 </div>
 
 <!-- ---------- Description ---------- -->
+## About this fork
+
+**LocalTranslate** is a fork of the excellent [**TranslateYou**](https://github.com/you-apps/TranslateYou) by [**you-apps**](https://github.com/you-apps). 
+
+This fork was created to:
+1.  **Prioritize On-Device Translation**: It makes **on-device LLM translation** (via Gemini Nano) the default engine for maximum privacy and offline capability.
+2.  **Streamline Engines**: Removed specific non-local APIs to focus on privacy-respecting and self-hostable alternatives.
+3.  **Modernize SDKs**: Updated internal build configurations and package structures for this specific distribution.
+
 ## Features
 
+- [x] **On-Device AI Translation**: Powered by Gemini Nano (default).
+- [x] **Privacy First**: Translations stay on your device whenever possible.
 - [x] more than 150 supported languages
-- [x] 9 different translation engines
 - [x] Material Design 3 (You)
 - [x] Dark and light theme
 - [x] Support for Android sharing system
@@ -27,21 +36,22 @@
 - [x] Translation from images
 - [x] Translation history
 - [x] Entirely Open Source
-- [X] Written in Jetpack Compose 
+- [x] Written in Jetpack Compose 
 
 <!-- ---------- Download ---------- -->
 ## Download
 
-[<img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" alt="Get it on F-Droid" height="80">](https://f-droid.org/packages/com.bnyro.translate/)
-[<img src="https://gitlab.com/IzzyOnDroid/repo/-/raw/master/assets/IzzyOnDroid.png" alt="Get it on IzzyOnDroid" height="80">](https://apt.izzysoft.de/fdroid/index/apk/com.bnyro.translate)
-[<img src="ghbadge.png" alt="Get it on GitHub" height="80">](https://github.com/you-apps/translateyou/releases)
+Download the latest release from the [**GitHub Releases**](https://github.com/barakplasma/LocalTranslate/releases) page.
 
 <!-- ---------- Supported translation engines ---------- -->
 ## Supported translation engines
 
+### Local / On-Device (Recommended)
+* **Gemini Nano (On-Device)**: High-quality translation performed locally on supported Android devices (e.g., Pixel 8+, S24+).
+
 ### Open Source / Self-hostable
-* <a href="https://github.com/LibreTranslate/LibreTranslate">LibreTranslate</a> _which requires an API key or alternatively has to be self-hosted._
-* <a href="https://github.com/thedaviddelta/lingva-translate">LingvaTranslate</a> _which uses Google Translate® to fetch translations._
+* <a href="https://github.com/LibreTranslate/LibreTranslate">LibreTranslate</a>
+* <a href="https://github.com/thedaviddelta/lingva-translate">LingvaTranslate</a>
 * <a href="https://simple-web.org/projects/simplytranslate.html">SimplyTranslate</a>
 * <a href="https://codeberg.org/aryak/mozhi">Mozhi</a>
 * <a href="https://translate.wmcloud.org">Wikimedia MinT</a>
@@ -57,7 +67,7 @@
 * <a href="https://laratranslate.com/translate">LaraTranslate®</a>
 * <a href="https://translate.kagi.com">Kagi Translate®</a>
 
-<!-- ---------- Screenshots [Plus version] ---------- -->
+<!-- ---------- Screenshots ---------- -->
 ## Screenshots
 
 <div style="display: flex;">
@@ -73,28 +83,18 @@
 ## Feedback and contributions
 ***All contributions are very welcome!***
 
-* Feel free to join the [Matrix room](https://matrix.to/#/#you-apps:matrix.org) for discussions about the app.
-* Bug reports and feature requests can be submitted [here](https://github.com/you-apps/TranslateYou/issues) (please make sure to fill out all the requested information properly!).
-* If you are a developer and wish to contribute to the app, please **fork** the project and submit a [**pull request**](https://help.github.com/articles/about-pull-requests/).
-
-## Translation
-<a href="https://hosted.weblate.org/projects/you-apps/translate-you/">
-<img src="https://hosted.weblate.org/widgets/you-apps/-/translate-you/287x66-grey.png" alt="Translation status" />
-</a>
-
-**Translations are greatly appreciated.** \
-If **Translate You** is not in your language, feel free to participate by:
-* Translating the application interface, via [**pull request**](https://help.github.com/articles/about-pull-requests/) or more simply by [**Weblate**](https://hosted.weblate.org/projects/you-apps/translate-you/).
-* **Check** and **update** the [**pre-existing translations on Github**](https://github.com/you-apps/TranslateYou/tree/master/app/src/main/res) or more simply via [**Weblate**](https://hosted.weblate.org/projects/you-apps/translate-you/).
+* Bug reports and feature requests for this fork can be submitted [here](https://github.com/barakplasma/LocalTranslate/issues).
+* If you wish to contribute, please **fork** the project and submit a [**pull request**](https://help.github.com/articles/about-pull-requests/).
 
 <!-- ---------- Privacy Policy and License ---------- -->
 ## Privacy Policy
 
-**Translate You's privacy policy is available** [**here**](https://github.com/you-apps/TranslateYou/blob/master/PRIVACY%20POLICY.md)
+**LocalTranslate's privacy policy is available** [**here**](https://github.com/barakplasma/LocalTranslate/blob/master/PRIVACY%20POLICY.md)
 
 ## Credits
+* Originally developed by [**you-apps**](https://github.com/you-apps) (TranslateYou).
 * Icon design by [M00NJ](https://github.com/M00NJ)
 
 ## License
 
-Translate You is licensed under the [**GNU General Public License**](https://www.gnu.org/licenses/gpl.html): You can use, study and share it as you want.
+LocalTranslate is licensed under the [**GNU General Public License**](https://www.gnu.org/licenses/gpl.html).

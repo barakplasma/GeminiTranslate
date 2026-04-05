@@ -4,7 +4,7 @@
     "type": "APK",
     "kind": "Directory"
   },
-  "applicationId": "com.bnyro.translate",
+  "applicationId": "com.barakplasma.localtranslate",
   "variantName": "release",
   "elements": [
     {
