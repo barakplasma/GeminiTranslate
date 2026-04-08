@@ -16,7 +16,7 @@ kotlin {
 dependencies {
     // Retrofit
     implementation("com.squareup.retrofit2:retrofit:3.0.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.10.0")
     implementation("com.jakewharton.retrofit:retrofit2-kotlinx-serialization-converter:1.0.0")
     implementation("com.squareup.retrofit2:converter-scalars:3.0.0")
     // retrofit:3.0.0 based on okhttp3:4.12.0
