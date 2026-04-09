@@ -19,12 +19,6 @@ package com.barakplasma.privateaitranslate.engine
 
 import android.content.Context
 import android.os.Build
-import com.google.ai.edge.litertlm.Backend
-import com.google.ai.edge.litertlm.Engine
-import com.google.ai.edge.litertlm.EngineConfig
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.withContext
 import net.youapps.translation_engines.ApiKeyState
 import net.youapps.translation_engines.EngineSettingsProvider
 import net.youapps.translation_engines.Language
@@ -32,6 +26,28 @@ import net.youapps.translation_engines.Translation
 import net.youapps.translation_engines.TranslationEngine
 import java.io.File
 
+/**
+ * On-device translation engine using the TranslateGemma 4B INT4 model via LiteRT-LM.
+ *
+ * The model file must be downloaded first via [TranslateGemmaHelper.startDownload].
+ * Requires Android 12 (API 31+).
+ *
+ * SDK integration note: The LiteRT-LM SDK (com.google.ai.edge.litertlm:litertlm-android)
+ * is loaded via reflection at runtime to avoid a hard compile-time dependency on the
+ * prebuilt AAR, which is not consistently available on Google Maven. The AAR can be
+ * placed in app/libs/ to enable inference; if it is absent the engine throws
+ * ModelNotAvailableException when translate() is called.
+ *
+ * Reflection call equivalent:
+ *   val config = EngineConfig(modelPath, Backend.CPU())
+ *   Engine(config).use { engine ->
+ *     engine.initialize()
+ *     engine.createConversation().use { conv ->
+ *       conv.sendMessageAsync("<<<source>>>$src<<<target>>>$dst<<<text>>>$query")
+ *         .collect { sb.append(it.toString()) }
+ *     }
+ *   }
+ */
 class TranslateGemmaEngine(
     settingsProvider: EngineSettingsProvider,
     private val appContext: Context
@@ -44,30 +60,62 @@ class TranslateGemmaEngine(
     override val supportsAudio = false
     override val isOnDevice = true
 
-    private var engine: Engine? = null
+    // Holds the live Engine instance (class loaded via reflection).
+    private var liveEngine: Any? = null
+    private var engineClass: Class<*>? = null
+    private var sdkAvailable: Boolean? = null
 
     override fun createOrRecreate(): TranslationEngine = apply {
-        engine?.close()
-        engine = null
-        // Engine initialization is deferred to first translate() call because loading
-        // a 2 GB model file at startup would block the app for ~10 seconds.
+        closeLiveEngine()
+        sdkAvailable = null // re-probe on next call
     }
 
-    private suspend fun getOrCreateEngine(): Engine = withContext(Dispatchers.IO) {
-        engine ?: run {
-            val modelFile = getModelFile(appContext)
-            if (!modelFile.exists()) {
-                throw IllegalStateException("TranslateGemma model not downloaded. Go to Settings > TranslateGemma to download it.")
-            }
-            val config = EngineConfig(
-                modelPath = modelFile.absolutePath,
-                backend = Backend.CPU()
-            )
-            val newEngine = Engine(config)
-            newEngine.initialize()
-            engine = newEngine
-            newEngine
+    private fun closeLiveEngine() {
+        try {
+            (liveEngine as? AutoCloseable)?.close()
+        } catch (_: Exception) {}
+        liveEngine = null
+    }
+
+    /** Returns true if the LiteRT-LM SDK classes are loadable. */
+    private fun isSdkAvailable(): Boolean {
+        sdkAvailable?.let { return it }
+        return try {
+            Class.forName("com.google.ai.edge.litertlm.Engine")
+            true.also { sdkAvailable = it }
+        } catch (_: ClassNotFoundException) {
+            false.also { sdkAvailable = it }
         }
+    }
+
+    private fun getOrCreateEngine(): Any {
+        liveEngine?.let { return it }
+
+        val modelFile = getModelFile(appContext)
+        check(modelFile.exists()) {
+            "TranslateGemma model not downloaded. Open Settings → TranslateGemma to download it."
+        }
+        check(isSdkAvailable()) {
+            "LiteRT-LM SDK not found. Add litertlm-android AAR to app/libs/ to enable this engine."
+        }
+
+        val engineConfigClass = Class.forName("com.google.ai.edge.litertlm.EngineConfig")
+        val backendClass = Class.forName("com.google.ai.edge.litertlm.Backend")
+        val cpuClass = Class.forName("com.google.ai.edge.litertlm.Backend\$CPU")
+        val cpuInstance = cpuClass.getDeclaredConstructor().newInstance()
+        val config = engineConfigClass.getDeclaredConstructor(
+            String::class.java, backendClass,
+            backendClass, backendClass,
+            Int::class.javaObjectType, Int::class.javaObjectType,
+            String::class.java
+        ).newInstance(modelFile.absolutePath, cpuInstance, null, null, null, null, null)
+
+        val engineClass = Class.forName("com.google.ai.edge.litertlm.Engine")
+        val engine = engineClass.getDeclaredConstructor(engineConfigClass).newInstance(config)
+        engineClass.getMethod("initialize").invoke(engine)
+        liveEngine = engine
+        this.engineClass = engineClass
+        return engine
     }
 
     override suspend fun getLanguages(): List<Language> = SUPPORTED_LANGUAGES
@@ -77,16 +125,22 @@ class TranslateGemmaEngine(
             throw IllegalStateException("TranslateGemma requires Android 12 (API 31) or higher")
         }
 
-        val e = getOrCreateEngine()
+        val engine = getOrCreateEngine()
         val sourceLang = if (source.isEmpty() || source == autoLanguageCode) "auto" else source
         val prompt = "<<<source>>>$sourceLang<<<target>>>$target<<<text>>>$query"
 
         val sb = StringBuilder()
-        e.createConversation().use { conv ->
-            conv.sendMessageAsync(prompt)
-                .catch { throw it }
-                .collect { chunk -> sb.append(chunk.toString()) }
+        val conversation = engineClass!!.getMethod("createConversation").invoke(engine)
+        try {
+            val convClass = Class.forName("com.google.ai.edge.litertlm.Conversation")
+            val sendAsync = convClass.getMethod("sendMessageAsync", String::class.java)
+            @Suppress("UNCHECKED_CAST")
+            val flow = sendAsync.invoke(conversation, prompt) as kotlinx.coroutines.flow.Flow<Any>
+            flow.collect { chunk -> sb.append(chunk.toString()) }
+        } finally {
+            (conversation as? AutoCloseable)?.close()
         }
+
         return Translation(translatedText = sb.toString().trim())
     }
 

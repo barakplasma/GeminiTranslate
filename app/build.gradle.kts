@@ -118,10 +118,6 @@ dependencies {
     // Gemini Nano on-device AI via ML Kit GenAI Prompt API
     implementation("com.google.mlkit:genai-prompt:1.0.0-beta1")
 
-    // LiteRT-LM for on-device TranslateGemma inference
-    // 0.9.0-alpha01 is the earliest confirmed version published to Google Maven
-    implementation("com.google.ai.edge.litertlm:litertlm-android:0.9.0-alpha01")
-
     // ML Kit Translation
     implementation("com.google.mlkit:translate:17.0.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.9.0")
