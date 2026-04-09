@@ -15,6 +15,8 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+
 package com.barakplasma.privateaitranslate.ui.views
 
 import androidx.compose.foundation.layout.Column
@@ -54,7 +56,6 @@ import com.barakplasma.privateaitranslate.ui.dialogs.FullscreenDialog
 import com.barakplasma.privateaitranslate.ui.models.DownloadState
 import com.barakplasma.privateaitranslate.ui.models.TranslateGemmaModel
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TranslateGemmaSettings(
     onDismissRequest: () -> Unit
