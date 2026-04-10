@@ -20,7 +20,6 @@ package com.barakplasma.privateaitranslate.util
 import android.app.DownloadManager
 import android.content.Context
 import android.net.Uri
-import android.os.Environment
 import com.barakplasma.privateaitranslate.engine.TranslateGemmaEngine
 import java.io.File
 
@@ -84,6 +83,28 @@ object TranslateGemmaHelper {
     /** Deletes the downloaded model file. Returns true on success. */
     fun deleteModel(context: Context): Boolean {
         return TranslateGemmaEngine.getModelFile(context).delete()
+    }
+
+    /**
+     * Copies a model file from a SAF content URI to the expected model path.
+     * Returns the output File on success, null on failure.
+     */
+    fun importFromFile(context: Context, sourceUri: Uri): File? {
+        val modelFile = TranslateGemmaEngine.getModelFile(context)
+        modelFile.parentFile?.mkdirs()
+        if (modelFile.exists()) modelFile.delete()
+
+        return try {
+            context.contentResolver.openInputStream(sourceUri)?.use { input ->
+                modelFile.outputStream().use { output ->
+                    input.copyTo(output)
+                }
+            }
+            if (modelFile.exists() && modelFile.length() > 0) modelFile else null
+        } catch (_: Exception) {
+            modelFile.delete()
+            null
+        }
     }
 
     /** Returns the model file size in bytes, or 0 if not downloaded. */

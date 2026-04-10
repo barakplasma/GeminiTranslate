@@ -19,6 +19,9 @@
 
 package com.barakplasma.privateaitranslate.ui.views
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -35,6 +38,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -54,6 +58,7 @@ import com.barakplasma.privateaitranslate.ui.components.DialogButton
 import com.barakplasma.privateaitranslate.ui.components.StyledIconButton
 import com.barakplasma.privateaitranslate.ui.dialogs.FullscreenDialog
 import com.barakplasma.privateaitranslate.ui.models.DownloadState
+import com.barakplasma.privateaitranslate.ui.models.ImportState
 import com.barakplasma.privateaitranslate.ui.models.TranslateGemmaModel
 
 @Composable
@@ -62,6 +67,14 @@ fun TranslateGemmaSettings(
 ) {
     val context = LocalContext.current
     val model: TranslateGemmaModel = viewModel()
+
+    val filePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            model.importFromFile(context, uri)
+        }
+    }
 
     LaunchedEffect(Unit) {
         model.init(context)
@@ -113,9 +126,12 @@ fun TranslateGemmaSettings(
                                         }
                                     }
                                 } else {
-                                    NotDownloadedRow {
-                                        model.startDownload(context)
-                                    }
+                                    NotDownloadedRow(
+                                        onDownload = { model.startDownload(context) },
+                                        onImport = {
+                                            filePickerLauncher.launch("*/*")
+                                        }
+                                    )
                                 }
                             }
 
@@ -165,6 +181,58 @@ fun TranslateGemmaSettings(
                             }
                         }
                     }
+
+                    if (model.importState == ImportState.IMPORTING) {
+                        item {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Importing…",
+                                    modifier = Modifier.weight(1f),
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                CircularProgressIndicator(
+                                    modifier = Modifier
+                                        .padding(8.dp)
+                                        .requiredSize(27.dp),
+                                    strokeWidth = 3.dp
+                                )
+                            }
+                        }
+                    }
+
+                    if (model.importState == ImportState.ERROR) {
+                        item {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Error,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = stringResource(R.string.translategemma_import_error),
+                                    modifier = Modifier.weight(1f),
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                                StyledIconButton(
+                                    imageVector = Icons.Default.Error,
+                                    tint = MaterialTheme.colorScheme.error
+                                ) {
+                                    model.resetError()
+                                }
+                            }
+                        }
+                    }
                 }
 
                 DialogButton(
@@ -181,7 +249,7 @@ fun TranslateGemmaSettings(
 }
 
 @Composable
-private fun NotDownloadedRow(onDownload: () -> Unit) {
+private fun NotDownloadedRow(onDownload: () -> Unit, onImport: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -193,6 +261,7 @@ private fun NotDownloadedRow(onDownload: () -> Unit) {
             modifier = Modifier.weight(1f),
             style = MaterialTheme.typography.bodyMedium
         )
+        StyledIconButton(imageVector = Icons.Default.UploadFile, onClick = onImport)
         StyledIconButton(imageVector = Icons.Default.Download, onClick = onDownload)
     }
 }

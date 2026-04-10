@@ -18,6 +18,7 @@
 package com.barakplasma.privateaitranslate.ui.models
 
 import android.content.Context
+import android.net.Uri
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -32,13 +33,14 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
-/** Download states: null = not started, 0..1 = in progress, 1f = done, -1f = error */
 enum class DownloadState { IDLE, DOWNLOADING, DONE, ERROR }
+enum class ImportState { IDLE, IMPORTING, DONE, ERROR }
 
 class TranslateGemmaModel : ViewModel() {
     var isModelDownloaded by mutableStateOf(false)
     var downloadProgress by mutableFloatStateOf(0f)
     var downloadState by mutableStateOf(DownloadState.IDLE)
+    var importState by mutableStateOf(ImportState.IDLE)
     var modelFileSizeBytes by mutableStateOf(0L)
 
     private var activeDownloadId = -1L
@@ -57,7 +59,6 @@ class TranslateGemmaModel : ViewModel() {
         viewModelScope.launch(Dispatchers.IO) {
             val downloadId = TranslateGemmaHelper.startDownload(context)
             if (downloadId == -1L) {
-                // Already downloaded
                 isModelDownloaded = true
                 modelFileSizeBytes = TranslateGemmaHelper.getModelFileSizeBytes(context)
                 downloadState = DownloadState.DONE
@@ -94,6 +95,23 @@ class TranslateGemmaModel : ViewModel() {
         }
     }
 
+    fun importFromFile(context: Context, uri: Uri) {
+        if (importState == ImportState.IMPORTING) return
+        importState = ImportState.IMPORTING
+
+        viewModelScope.launch(Dispatchers.IO) {
+            val result = TranslateGemmaHelper.importFromFile(context, uri)
+            if (result != null) {
+                isModelDownloaded = true
+                modelFileSizeBytes = TranslateGemmaHelper.getModelFileSizeBytes(context)
+                importState = ImportState.DONE
+                downloadState = DownloadState.DONE
+            } else {
+                importState = ImportState.ERROR
+            }
+        }
+    }
+
     fun cancelDownload(context: Context) {
         pollJob?.cancel()
         if (activeDownloadId != -1L) {
@@ -109,9 +127,11 @@ class TranslateGemmaModel : ViewModel() {
         isModelDownloaded = false
         modelFileSizeBytes = 0L
         downloadState = DownloadState.IDLE
+        importState = ImportState.IDLE
     }
 
     fun resetError() {
         downloadState = DownloadState.IDLE
+        importState = ImportState.IDLE
     }
 }

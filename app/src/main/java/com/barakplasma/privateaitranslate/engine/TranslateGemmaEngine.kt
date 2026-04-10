@@ -19,6 +19,9 @@ package com.barakplasma.privateaitranslate.engine
 
 import android.content.Context
 import android.os.Build
+import com.google.ai.edge.litertlm.Backend
+import com.google.ai.edge.litertlm.Engine
+import com.google.ai.edge.litertlm.EngineConfig
 import kotlinx.coroutines.flow.collect
 import net.youapps.translation_engines.ApiKeyState
 import net.youapps.translation_engines.EngineSettingsProvider
@@ -27,28 +30,6 @@ import net.youapps.translation_engines.Translation
 import net.youapps.translation_engines.TranslationEngine
 import java.io.File
 
-/**
- * On-device translation engine using the TranslateGemma 4B INT4 model via LiteRT-LM.
- *
- * The model file must be downloaded first via [TranslateGemmaHelper.startDownload].
- * Requires Android 12 (API 31+).
- *
- * SDK integration note: The LiteRT-LM SDK (com.google.ai.edge.litertlm:litertlm-android)
- * is loaded via reflection at runtime to avoid a hard compile-time dependency on the
- * prebuilt AAR, which is not consistently available on Google Maven. The AAR can be
- * placed in app/libs/ to enable inference; if it is absent the engine throws
- * ModelNotAvailableException when translate() is called.
- *
- * Reflection call equivalent:
- *   val config = EngineConfig(modelPath, Backend.CPU())
- *   Engine(config).use { engine ->
- *     engine.initialize()
- *     engine.createConversation().use { conv ->
- *       conv.sendMessageAsync("<<<source>>>$src<<<target>>>$dst<<<text>>>$query")
- *         .collect { sb.append(it.toString()) }
- *     }
- *   }
- */
 class TranslateGemmaEngine(
     settingsProvider: EngineSettingsProvider,
     private val appContext: Context
@@ -61,61 +42,34 @@ class TranslateGemmaEngine(
     override val supportsAudio = false
     override val isOnDevice = true
 
-    // Holds the live Engine instance (class loaded via reflection).
-    private var liveEngine: Any? = null
-    private var engineClass: Class<*>? = null
-    private var sdkAvailable: Boolean? = null
+    private var liveEngine: Engine? = null
 
     override fun createOrRecreate(): TranslationEngine = apply {
         closeLiveEngine()
-        sdkAvailable = null // re-probe on next call
     }
 
     private fun closeLiveEngine() {
         try {
-            (liveEngine as? AutoCloseable)?.close()
+            liveEngine?.close()
         } catch (_: Exception) {}
         liveEngine = null
     }
 
-    /** Returns true if the LiteRT-LM SDK classes are loadable. */
-    private fun isSdkAvailable(): Boolean {
-        sdkAvailable?.let { return it }
-        return try {
-            Class.forName("com.google.ai.edge.litertlm.Engine")
-            true.also { sdkAvailable = it }
-        } catch (_: ClassNotFoundException) {
-            false.also { sdkAvailable = it }
-        }
-    }
-
-    private fun getOrCreateEngine(): Any {
+    private fun getOrCreateEngine(): Engine {
         liveEngine?.let { return it }
 
         val modelFile = getModelFile(appContext)
         check(modelFile.exists()) {
-            "TranslateGemma model not downloaded. Open Settings → TranslateGemma to download it."
-        }
-        check(isSdkAvailable()) {
-            "LiteRT-LM SDK not found. Add litertlm-android AAR to app/libs/ to enable this engine."
+            "TranslateGemma model not downloaded. Open Settings → TranslateGemma to download or import it."
         }
 
-        val engineConfigClass = Class.forName("com.google.ai.edge.litertlm.EngineConfig")
-        val backendClass = Class.forName("com.google.ai.edge.litertlm.Backend")
-        val cpuClass = Class.forName("com.google.ai.edge.litertlm.Backend\$CPU")
-        val cpuInstance = cpuClass.getDeclaredConstructor().newInstance()
-        val config = engineConfigClass.getDeclaredConstructor(
-            String::class.java, backendClass,
-            backendClass, backendClass,
-            Int::class.javaObjectType, Int::class.javaObjectType,
-            String::class.java
-        ).newInstance(modelFile.absolutePath, cpuInstance, null, null, null, null, null)
-
-        val engineClass = Class.forName("com.google.ai.edge.litertlm.Engine")
-        val engine = engineClass.getDeclaredConstructor(engineConfigClass).newInstance(config)
-        engineClass.getMethod("initialize").invoke(engine)
+        val config = EngineConfig(
+            modelPath = modelFile.absolutePath,
+            backend = Backend.CPU()
+        )
+        val engine = Engine(config)
+        engine.initialize()
         liveEngine = engine
-        this.engineClass = engineClass
         return engine
     }
 
@@ -131,15 +85,8 @@ class TranslateGemmaEngine(
         val prompt = "<<<source>>>$sourceLang<<<target>>>$target<<<text>>>$query"
 
         val sb = StringBuilder()
-        val conversation = engineClass!!.getMethod("createConversation").invoke(engine)
-        try {
-            val convClass = Class.forName("com.google.ai.edge.litertlm.Conversation")
-            val sendAsync = convClass.getMethod("sendMessageAsync", String::class.java)
-            @Suppress("UNCHECKED_CAST")
-            val flow = sendAsync.invoke(conversation, prompt) as kotlinx.coroutines.flow.Flow<Any>
-            flow.collect { chunk -> sb.append(chunk.toString()) }
-        } finally {
-            (conversation as? AutoCloseable)?.close()
+        engine.createConversation().use { conversation ->
+            conversation.sendMessageAsync(prompt).collect { chunk -> sb.append(chunk) }
         }
 
         return Translation(translatedText = sb.toString().trim())
@@ -148,7 +95,7 @@ class TranslateGemmaEngine(
     companion object {
         const val MODEL_FILENAME = "translategemma-4b-it-int4-generic.litertlm"
         const val MODEL_DIR = "translategemma"
-        const val MODEL_SIZE_BYTES = 2_000_000_000L // ~2 GB
+        const val MODEL_SIZE_BYTES = 2_000_000_000L
         const val MODEL_DOWNLOAD_URL =
             "https://huggingface.co/barakplasma/translategemma-4b-it-android-task-quantized/resolve/main/artifacts/int4-generic/translategemma-4b-it-int4-generic.litertlm"
 
