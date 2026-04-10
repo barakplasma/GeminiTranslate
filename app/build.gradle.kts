@@ -1,5 +1,3 @@
-import com.android.build.api.dsl.Packaging
-
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -60,8 +58,10 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions {
-        jvmTarget = "17"
+    kotlin {
+        compilerOptions {
+            jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
+        }
     }
     buildFeatures {
         compose = true
@@ -95,13 +95,13 @@ dependencies {
     androidTestImplementation("androidx.compose.ui:ui-test-junit4:$compose_version")
     debugImplementation("androidx.compose.ui:ui-tooling:$compose_version")
     debugImplementation("androidx.compose.ui:ui-test-manifest:$compose_version")
-    implementation("androidx.navigation:navigation-compose:2.9.1")
+    implementation("androidx.navigation:navigation-compose:2.9.7")
     implementation("com.materialkolor:material-kolor:3.0.1")
 
     // Retrofit & API
     implementation(project(":translation-engines"))
     implementation("com.squareup.retrofit2:retrofit:3.0.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.10.0")
     implementation("com.jakewharton.retrofit:retrofit2-kotlinx-serialization-converter:1.0.0")
     // retrofit:3.0.0 based on okhttp3:4.12.0
 
