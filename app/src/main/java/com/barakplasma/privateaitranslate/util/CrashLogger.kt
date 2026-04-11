@@ -5,6 +5,7 @@ import android.os.Build
 import android.util.Log
 import com.barakplasma.privateaitranslate.BuildConfig
 import java.io.File
+import java.io.FileOutputStream
 import java.io.PrintWriter
 import java.io.StringWriter
 import java.net.HttpURLConnection
@@ -81,9 +82,14 @@ object CrashLogger {
 
     fun sendLogsToNtfy() {
         val logs = readLog()
-        if (logs.isBlank() || logs == "(no logs)") return
+        if (logs.isBlank()) {
+            val emptyMsg = "${isoNow()} I/CrashLogger: Log file is empty, nothing to send"
+            Thread { postToNtfy("LOGS", emptyMsg, highPriority = false) }.start()
+            return
+        }
         Thread {
-            postToNtfy("LOGS", logs, highPriority = false)
+            val result = postToNtfy("LOGS", logs, highPriority = false)
+            Log.i(TAG, "ntfy send result: $result")
         }.start()
     }
 
@@ -105,12 +111,15 @@ object CrashLogger {
                 val keep = content.takeLast(MAX_LOG_SIZE / 2)
                 logFile.writeText(keep)
             }
-            logFile.appendText(entry)
+            FileOutputStream(logFile, true).use { fos ->
+                fos.write(entry.toByteArray(Charsets.UTF_8))
+                fos.fd.sync()
+            }
         } catch (_: Exception) {}
     }
 
-    private fun postToNtfy(title: String, body: String, highPriority: Boolean) {
-        try {
+    private fun postToNtfy(title: String, body: String, highPriority: Boolean): Int {
+        return try {
             val conn = URL(NTFY_URL).openConnection() as HttpURLConnection
             conn.requestMethod = "POST"
             conn.doOutput = true
@@ -122,10 +131,12 @@ object CrashLogger {
             conn.setRequestProperty("Click", "https://github.com/barakplasma/TranslateYou")
             val payload = if (body.length > 4000) body.take(4000) + "\n...truncated" else body
             conn.outputStream.use { it.write(payload.toByteArray(Charsets.UTF_8)) }
-            conn.responseCode
+            val code = conn.responseCode
             conn.disconnect()
+            code
         } catch (e: Exception) {
             Log.e(TAG, "Failed to post to ntfy: ${e.message}")
+            -1
         }
     }
 
