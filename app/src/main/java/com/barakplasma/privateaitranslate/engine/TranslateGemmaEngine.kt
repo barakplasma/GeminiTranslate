@@ -44,6 +44,7 @@ class TranslateGemmaEngine(
     override val autoLanguageCode = "auto"
     override val supportsAudio = false
     override val isOnDevice = true
+    override val supportedModels = listOf("CPU", "GPU")
 
     private var liveEngine: Engine? = null
 
@@ -69,15 +70,20 @@ class TranslateGemmaEngine(
         }
 
         return try {
+            val selectedBackend = getSelectedModel() ?: "CPU"
+            val backend = when (selectedBackend) {
+                "GPU" -> Backend.GPU()
+                else -> Backend.CPU()
+            }
             val config = EngineConfig(
                 modelPath = modelFile.absolutePath,
-                backend = Backend.CPU()
+                backend = backend
             )
-            CrashLogger.i(TAG, "Initializing engine with model: ${modelFile.absolutePath} (${modelFile.length()} bytes)")
+            CrashLogger.i(TAG, "Initializing engine ($selectedBackend) with model: ${modelFile.absolutePath} (${modelFile.length()} bytes)")
             val engine = Engine(config)
             engine.initialize()
             liveEngine = engine
-            CrashLogger.i(TAG, "Engine initialized successfully")
+            CrashLogger.i(TAG, "Engine initialized successfully ($selectedBackend)")
             engine
         } catch (e: Exception) {
             CrashLogger.e(TAG, "Failed to initialize engine: ${e.message}", e)
