@@ -179,7 +179,7 @@ class TranslateGemmaEngine(
 
         val engine = getOrCreateEngine()
         val sourceLang = if (source.isEmpty() || source == autoLanguageCode) "auto" else source
-        val prompt = "<<<source>>>$sourceLang<<<target>>>$target<<<text>>>$query"
+        val prompt = "<src>$sourceLang</src><dst>$target</dst><text>$query</text>"
 
         return try {
             val sb = StringBuilder()
