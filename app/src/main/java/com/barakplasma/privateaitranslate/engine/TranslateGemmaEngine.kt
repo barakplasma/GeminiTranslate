@@ -19,6 +19,7 @@ package com.barakplasma.privateaitranslate.engine
 
 import android.content.Context
 import android.os.Build
+import android.util.Log
 import com.google.ai.edge.litertlm.Backend
 import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
@@ -29,6 +30,8 @@ import net.youapps.translation_engines.Language
 import net.youapps.translation_engines.Translation
 import net.youapps.translation_engines.TranslationEngine
 import java.io.File
+
+private const val TAG = "TranslateGemma"
 
 class TranslateGemmaEngine(
     settingsProvider: EngineSettingsProvider,
@@ -51,7 +54,9 @@ class TranslateGemmaEngine(
     private fun closeLiveEngine() {
         try {
             liveEngine?.close()
-        } catch (_: Exception) {}
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to close engine: ${e.message}", e)
+        }
         liveEngine = null
     }
 
@@ -63,14 +68,19 @@ class TranslateGemmaEngine(
             "TranslateGemma model not downloaded. Open Settings → TranslateGemma to download or import it."
         }
 
-        val config = EngineConfig(
-            modelPath = modelFile.absolutePath,
-            backend = Backend.CPU()
-        )
-        val engine = Engine(config)
-        engine.initialize()
-        liveEngine = engine
-        return engine
+        return try {
+            val config = EngineConfig(
+                modelPath = modelFile.absolutePath,
+                backend = Backend.CPU()
+            )
+            val engine = Engine(config)
+            engine.initialize()
+            liveEngine = engine
+            engine
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to initialize engine: ${e.message}", e)
+            throw IllegalStateException("TranslateGemma engine initialization failed: ${e.message}", e)
+        }
     }
 
     override suspend fun getLanguages(): List<Language> = SUPPORTED_LANGUAGES
@@ -84,12 +94,22 @@ class TranslateGemmaEngine(
         val sourceLang = if (source.isEmpty() || source == autoLanguageCode) "auto" else source
         val prompt = "<<<source>>>$sourceLang<<<target>>>$target<<<text>>>$query"
 
-        val sb = StringBuilder()
-        engine.createConversation().use { conversation ->
-            conversation.sendMessageAsync(prompt).collect { chunk -> sb.append(chunk) }
+        return try {
+            val sb = StringBuilder()
+            engine.createConversation().use { conversation ->
+                conversation.sendMessageAsync(prompt).collect { chunk ->
+                    try {
+                        sb.append(chunk)
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Failed to append chunk: ${e.message}", e)
+                    }
+                }
+            }
+            Translation(translatedText = sb.toString().trim())
+        } catch (e: Exception) {
+            Log.e(TAG, "Translation failed: ${e.message}", e)
+            throw IllegalStateException("Translation failed: ${e.message}", e)
         }
-
-        return Translation(translatedText = sb.toString().trim())
     }
 
     companion object {
