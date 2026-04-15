@@ -208,6 +208,7 @@ class TranslateGemmaEngine(
                             CrashLogger.w(TAG, "Failed to append chunk: ${e.message}", e)
                         }
                     }
+                }
             }
 
             val result = sb.toString().trim()
