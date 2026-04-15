@@ -1,9 +1,7 @@
 plugins {
     id("com.android.application")
-    id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
-    id("kotlinx-serialization")
-    id("com.google.devtools.ksp")
+    id("org.jetbrains.kotlin.plugin.serialization")
 }
 
 android {
@@ -20,10 +18,6 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
-    }
-
-    ksp {
-        arg("room.schemaLocation", "$projectDir/schemas")
     }
 
     buildTypes {
@@ -107,7 +101,7 @@ dependencies {
 
     // Room database
     implementation("androidx.room:room-ktx:2.7.2")
-    ksp("androidx.room:room-compiler:2.7.2")
+    annotationProcessor("androidx.room:room-compiler:2.7.2")
 
     // Tesseract OCR
     implementation("cz.adaptech.tesseract4android:tesseract4android-openmp:4.9.0")
@@ -124,4 +118,7 @@ dependencies {
     // ML Kit Translation
     implementation("com.google.mlkit:translate:17.0.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.9.0")
+
+    // Sentry for crash reporting
+    implementation("io.sentry:sentry-android-core:7.14.0")
 }

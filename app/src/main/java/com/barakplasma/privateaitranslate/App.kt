@@ -25,6 +25,7 @@ import com.barakplasma.privateaitranslate.util.CrashLogger
 import com.barakplasma.privateaitranslate.util.EnginePreferencesProviderImpl
 import com.barakplasma.privateaitranslate.util.Preferences
 import com.barakplasma.privateaitranslate.util.SpeechHelper
+import io.sentry.android.core.SentryAndroid
 import net.youapps.translation_engines.TranslationEngine
 import net.youapps.translation_engines.TranslationEngines
 
@@ -32,11 +33,21 @@ class App : Application() {
     override fun onCreate() {
         super.onCreate()
 
+        Preferences.initialize(this)
+
+        initializeSentry()
+
         CrashLogger.init(this)
 
-        Preferences.initialize(
-            this
-        )
+        // Disable crash reporting in high security mode or on-device only mode
+        if (BuildConfig.ON_DEVICE_ONLY) {
+            Preferences.put(Preferences.sendCrashReportsKey, false)
+        } else {
+            val highSecurityMode = Preferences.get(Preferences.highSecurityModeKey, false)
+            if (highSecurityMode) {
+                Preferences.put(Preferences.sendCrashReportsKey, false)
+            }
+        }
 
         DatabaseHolder().initDb(
             this
@@ -61,6 +72,18 @@ class App : Application() {
 
         // initialize all translation engines
         updateAllTranslationEngines()
+    }
+
+    private fun initializeSentry() {
+        SentryAndroid.init(this) { options ->
+            options.dsn = "https://c270c03278e541f4ad537702fec77b1e@barakplasma.bugsink.com/1"
+            options.environment = if (BuildConfig.DEBUG) "debug" else "production"
+            options.release = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})"
+            options.sampleRate = 1.0  // Capture 100% of errors
+            options.isAttachScreenshot = false
+            options.isSendDefaultPii = false
+            options.maxBreadcrumbs = 50
+        }
     }
 
     companion object {

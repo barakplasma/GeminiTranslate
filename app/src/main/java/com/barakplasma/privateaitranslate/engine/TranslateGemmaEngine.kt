@@ -47,6 +47,7 @@ class TranslateGemmaEngine(
     override val supportedModels = listOf("CPU", "GPU")
 
     private var liveEngine: Engine? = null
+    private var backendAvailability: MutableMap<String, Boolean?> = mutableMapOf()
 
     override fun createOrRecreate(): TranslationEngine = apply {
         closeLiveEngine()
@@ -61,33 +62,123 @@ class TranslateGemmaEngine(
         liveEngine = null
     }
 
+    private fun isBackendAvailable(backendName: String): Boolean {
+        backendAvailability[backendName]?.let { return it }
+
+        val available = try {
+            when (backendName) {
+                "GPU" -> {
+                    Backend.GPU()
+                    true
+                }
+                else -> {
+                    Backend.CPU()
+                    true
+                }
+            }
+        } catch (e: UnsatisfiedLinkError) {
+            CrashLogger.w(TAG, "Backend '$backendName' not available: ${e.message}")
+            false
+        } catch (e: UnsupportedOperationException) {
+            CrashLogger.w(TAG, "Backend '$backendName' not supported on this device: ${e.message}")
+            false
+        } catch (e: Exception) {
+            CrashLogger.w(TAG, "Failed to check backend '$backendName' availability: ${e.message}")
+            false
+        }
+
+        backendAvailability[backendName] = available
+        return available
+    }
+
+    private fun getBackendWithFallback(): Pair<String, Backend> {
+        val selectedBackend = getSelectedModel() ?: "CPU"
+
+        // Try selected backend first
+        if (selectedBackend != "CPU" && isBackendAvailable(selectedBackend)) {
+            try {
+                val backend = when (selectedBackend) {
+                    "GPU" -> Backend.GPU()
+                    else -> Backend.CPU()
+                }
+                CrashLogger.i(TAG, "Using selected backend: $selectedBackend")
+                return Pair(selectedBackend, backend)
+            } catch (e: Exception) {
+                CrashLogger.w(TAG, "Failed to initialize selected backend '$selectedBackend': ${e.message}", e)
+            }
+        }
+
+        // Fallback chain: GPU → CPU
+        val fallbackChain = listOf("GPU", "CPU")
+        for (backendName in fallbackChain) {
+            if (backendName == selectedBackend) continue // Already tried
+
+            if (isBackendAvailable(backendName)) {
+                try {
+                    val backend = when (backendName) {
+                        "GPU" -> Backend.GPU()
+                        else -> Backend.CPU()
+                    }
+                    CrashLogger.w(TAG, "Falling back from '$selectedBackend' to '$backendName'")
+                    return Pair(backendName, backend)
+                } catch (e: Exception) {
+                    CrashLogger.w(TAG, "Fallback backend '$backendName' also failed: ${e.message}")
+                }
+            }
+        }
+
+        // Last resort: Always use CPU
+        try {
+            CrashLogger.w(TAG, "All preferred backends failed, using CPU as last resort")
+            return Pair("CPU", Backend.CPU())
+        } catch (e: Exception) {
+            CrashLogger.e(TAG, "Critical: CPU backend also failed: ${e.message}", e)
+            throw IllegalStateException("All translation backends failed: ${e.message}", e)
+        }
+    }
+
+    @Synchronized
     private fun getOrCreateEngine(): Engine {
         liveEngine?.let { return it }
 
         val modelFile = getModelFile(appContext)
         check(modelFile.exists()) {
-            "TranslateGemma model not downloaded. Open Settings → TranslateGemma to download or import it."
+            "TranslateGemma model not downloaded. Expected location: ${modelFile.absolutePath}. Open Settings → TranslateGemma to download or import it."
         }
 
+        // Validate model file size (minimum ~1.5GB for 2GB quantized model)
+        val minModelSize = 1_500_000_000L
+        val modelSizeGB = String.format("%.2f", modelFile.length() / 1_000_000_000.0)
+        check(modelFile.length() >= minModelSize) {
+            "TranslateGemma model appears corrupted or incomplete ($modelSizeGB GB, expected >1.5 GB). Delete and re-download."
+        }
+
+        var backendName = "unknown"
         return try {
-            val selectedBackend = getSelectedModel() ?: "CPU"
-            val backend = when (selectedBackend) {
-                "GPU" -> Backend.GPU()
-                else -> Backend.CPU()
-            }
+            val (name, backend) = getBackendWithFallback()
+            backendName = name
             val config = EngineConfig(
                 modelPath = modelFile.absolutePath,
                 backend = backend
             )
-            CrashLogger.i(TAG, "Initializing engine ($selectedBackend) with model: ${modelFile.absolutePath} (${modelFile.length()} bytes)")
+            CrashLogger.i(TAG, "Initializing engine ($backendName) with model: ${modelFile.absolutePath} ($modelSizeGB GB)")
             val engine = Engine(config)
             engine.initialize()
             liveEngine = engine
-            CrashLogger.i(TAG, "Engine initialized successfully ($selectedBackend)")
+            CrashLogger.i(TAG, "Engine initialized successfully ($backendName)")
             engine
+        } catch (e: UnsatisfiedLinkError) {
+            val msg = "TranslateGemma engine initialization failed ($backendName backend): Native library not available. This typically means required GPU libraries are missing on your device. Switching to CPU backend."
+            CrashLogger.e(TAG, msg, e)
+            throw IllegalStateException(msg, e)
+        } catch (e: OutOfMemoryError) {
+            closeLiveEngine()
+            val msg = "TranslateGemma engine initialization failed: Device is out of memory. Please close other apps and try again."
+            CrashLogger.e(TAG, msg, e)
+            throw IllegalStateException(msg, e)
         } catch (e: Exception) {
-            CrashLogger.e(TAG, "Failed to initialize engine: ${e.message}", e)
-            throw IllegalStateException("TranslateGemma engine initialization failed: ${e.message}", e)
+            CrashLogger.e(TAG, "Failed to initialize engine after all fallbacks: ${e.message}", e)
+            throw IllegalStateException("TranslateGemma engine initialization failed: ${e.message}. Check that the model file is valid and not corrupted.", e)
         }
     }
 
@@ -102,23 +193,33 @@ class TranslateGemmaEngine(
         val sourceLang = if (source.isEmpty() || source == autoLanguageCode) "auto" else source
         val prompt = "<src>$sourceLang</src><dst>$target</dst><text>$query</text>"
 
-        CrashLogger.i(TAG, "About to translate: source=$sourceLang target=$target query='$query' backend=${getSelectedModel() ?: "CPU"}")
-
         return try {
             val sb = StringBuilder()
-            CrashLogger.i(TAG, "Creating conversation...")
-            engine.createConversation().use { conversation ->
-                CrashLogger.i(TAG, "Sending message async...")
-                conversation.sendMessageAsync(prompt).collect { chunk ->
-                    try {
-                        sb.append(chunk.toString())
-                    } catch (e: Exception) {
-                        CrashLogger.w(TAG, "Failed to append chunk: ${e.message}", e)
+            val conversation = engine.createConversation()
+
+            conversation.use { conv ->
+                val flow = conv.sendMessageAsync(prompt)
+
+                flow.collect { chunk ->
+                    chunk?.let {
+                        try {
+                            sb.append(it)
+                        } catch (e: Exception) {
+                            CrashLogger.w(TAG, "Failed to append chunk: ${e.message}", e)
+                        }
                     }
                 }
             }
-            CrashLogger.i(TAG, "Translation complete: '${sb.toString().take(100)}'")
-            Translation(translatedText = sb.toString().trim())
+
+            val result = sb.toString().trim()
+            if (result.isEmpty()) {
+                throw IllegalStateException("Translation resulted in empty output. The model may not have generated a response.")
+            }
+            Translation(translatedText = result)
+        } catch (e: OutOfMemoryError) {
+            CrashLogger.e(TAG, "Translation failed: Out of memory during text generation", e)
+            closeLiveEngine()
+            throw IllegalStateException("Translation failed: Device out of memory. Try a smaller input text or restart the app.", e)
         } catch (e: Exception) {
             CrashLogger.e(TAG, "Translation failed: ${e.message}", e)
             throw IllegalStateException("Translation failed: ${e.message}", e)
