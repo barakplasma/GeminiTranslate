@@ -8,12 +8,6 @@ on:
       - "fastlane/**"
       - "assets/**"
       - ".github/**/*.md"
-  push:
-    paths-ignore:
-      - "README*.md"
-      - "fastlane/**"
-      - "assets/**"
-      - ".github/**/*.md"
 
 jobs:
   debug-builds:
