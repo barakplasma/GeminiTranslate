@@ -6,7 +6,7 @@ plugins {
     id("com.android.library") version "9.1.0" apply false
     id("org.jetbrains.kotlin.android") version "2.2.0" apply false
     id("org.jetbrains.kotlin.plugin.compose") version "2.2.0" apply false
-    id("org.jetbrains.kotlin.plugin.serialization") version "2.2.0"
+    id("org.jetbrains.kotlin.plugin.serialization") version "2.2.0" apply false
     id("com.google.devtools.ksp") version "2.2.0-2.0.2" apply false
     id("org.jetbrains.kotlin.jvm") version "2.2.0" apply false
 }
