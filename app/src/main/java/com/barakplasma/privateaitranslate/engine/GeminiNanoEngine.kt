@@ -39,8 +39,11 @@ class GeminiNanoEngine(
     private var model: GenerativeModel? = null
 
     override fun createOrRecreate(): TranslationEngine = apply {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        try {
             model = com.google.mlkit.genai.prompt.Generation.getClient()
+        } catch (t: Throwable) {
+            // Gemini Nano requires AI Core; unavailable on most devices
+            model = null
         }
     }
 

@@ -43,6 +43,7 @@ object CrashLogger {
             appendLog(crashLog)
             if (isCrashReportingEnabled()) {
                 Sentry.captureException(throwable)
+                Sentry.flush(5_000) // ensure event reaches Bugsink before the process is killed
             }
             defaultHandler?.uncaughtException(thread, throwable)
         }
