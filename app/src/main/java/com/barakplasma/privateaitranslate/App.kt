@@ -56,22 +56,30 @@ class App : Application() {
         SpeechHelper.initTTS(this)
 
         val settingsProvider = EnginePreferencesProviderImpl()
-        translationEngines = if (BuildConfig.ON_DEVICE_ONLY) {
-            listOf(
-                GeminiNanoEngine(settingsProvider),
-                MLKitEngine(settingsProvider),
-                TranslateGemmaEngine(settingsProvider, this)
-            )
-        } else {
-            listOf(
-                GeminiNanoEngine(settingsProvider),
-                MLKitEngine(settingsProvider),
-                TranslateGemmaEngine(settingsProvider, this)
-            ) + TranslationEngines.getAllEngines(settingsProvider)
-        }
+        translationEngines = buildEngineList(settingsProvider)
 
         // initialize all translation engines
         updateAllTranslationEngines()
+    }
+
+    private fun buildEngineList(settingsProvider: EnginePreferencesProviderImpl): List<TranslationEngine> {
+        val engines = mutableListOf<TranslationEngine>()
+        val factories: List<Pair<String, () -> TranslationEngine>> = buildList {
+            add("GeminiNano" to { GeminiNanoEngine(settingsProvider) })
+            add("MLKit" to { MLKitEngine(settingsProvider) })
+            add("TranslateGemma" to { TranslateGemmaEngine(settingsProvider, this@App) })
+            if (!BuildConfig.ON_DEVICE_ONLY) {
+                addAll(TranslationEngines.getAllEngines(settingsProvider).map { it.name to { it } })
+            }
+        }
+        for ((label, factory) in factories) {
+            try {
+                engines.add(factory())
+            } catch (t: Throwable) {
+                CrashLogger.e("App", "Engine '$label' failed to construct: ${t.message}", t)
+            }
+        }
+        return engines
     }
 
     private fun initializeSentry() {

@@ -47,11 +47,10 @@ open class TranslationActivity: ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         LocaleHelper.updateLanguage(this)
+        super.onCreate(savedInstanceState)
 
         translationModel = ViewModelProvider(this)[TranslationModel::class.java]
         handleIntentData()
-
-        super.onCreate(savedInstanceState)
     }
 
     fun showContent(content: @Composable () -> Unit) {
