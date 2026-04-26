@@ -90,7 +90,13 @@ class App : Application() {
         lateinit var translationEngines: List<TranslationEngine>
 
         fun updateAllTranslationEngines() {
-            for (engine in translationEngines) engine.createOrRecreate()
+            for (engine in translationEngines) {
+                try {
+                    engine.createOrRecreate()
+                } catch (t: Throwable) {
+                    CrashLogger.e("App", "Failed to initialize engine '${engine.name}': ${t.message}", t)
+                }
+            }
         }
 
         fun getAvailableEngines(): List<TranslationEngine> {
