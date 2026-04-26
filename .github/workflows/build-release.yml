@@ -46,10 +46,9 @@ jobs:
           if [ "${{ env.KEYSTORE }}" != "" ]; then
             mv "${{ steps.sign.outputs.signedFile }}" "app-release.apk"
           else
-            echo "No custom keystore provided, signing with a generated debug key to allow installation..."
-            keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "C=US, O=Android, CN=Android Debug"
+            echo "No production keystore secret set — using committed debug signing key for consistent APK signatures."
             APKSIGNER=$(find $ANDROID_HOME/build-tools -name "apksigner" | sort -r | head -n 1)
-            $APKSIGNER sign --ks debug.keystore --ks-pass pass:android --key-pass pass:android app/build/outputs/apk/full/release/app-full-release-unsigned.apk
+            $APKSIGNER sign --ks app/debug-signing.keystore --ks-pass pass:android123 --ks-key-alias privateaitranslate --key-pass pass:android123 app/build/outputs/apk/full/release/app-full-release-unsigned.apk
             mv app/build/outputs/apk/full/release/app-full-release-unsigned.apk "app-release.apk"
           fi
 
@@ -110,10 +109,9 @@ jobs:
           if [ "${{ env.KEYSTORE }}" != "" ]; then
             mv "${{ steps.sign.outputs.signedFile }}" "app-release-no-internet.apk"
           else
-            echo "No custom keystore provided, signing with a generated debug key to allow installation..."
-            keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "C=US, O=Android, CN=Android Debug"
+            echo "No production keystore secret set — using committed debug signing key for consistent APK signatures."
             APKSIGNER=$(find $ANDROID_HOME/build-tools -name "apksigner" | sort -r | head -n 1)
-            $APKSIGNER sign --ks debug.keystore --ks-pass pass:android --key-pass pass:android app/build/outputs/apk/noInternet/release/app-noInternet-release-unsigned.apk
+            $APKSIGNER sign --ks app/debug-signing.keystore --ks-pass pass:android123 --ks-key-alias privateaitranslate --key-pass pass:android123 app/build/outputs/apk/noInternet/release/app-noInternet-release-unsigned.apk
             mv app/build/outputs/apk/noInternet/release/app-noInternet-release-unsigned.apk "app-release-no-internet.apk"
           fi
 

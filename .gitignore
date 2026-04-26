@@ -18,4 +18,6 @@ app/standard/release
 app/libre/release
 *.jks
 *.keystore
+# Allow the committed debug signing key used by CI when no production keystore secret is set
+!app/debug-signing.keystore
 upload_secrets.sh
