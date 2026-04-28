@@ -25,14 +25,34 @@ import com.barakplasma.privateaitranslate.util.CrashLogger
 import com.barakplasma.privateaitranslate.util.EnginePreferencesProviderImpl
 import com.barakplasma.privateaitranslate.util.Preferences
 import com.barakplasma.privateaitranslate.util.SpeechHelper
+import io.sentry.Sentry
 import io.sentry.android.core.SentryAndroid
 import net.youapps.translation_engines.TranslationEngine
 import net.youapps.translation_engines.TranslationEngines
+import java.io.File
+import java.io.FileOutputStream
+import java.io.PrintWriter
+import java.io.StringWriter
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class App : Application() {
     override fun onCreate() {
         super.onCreate()
+        try {
+            doOnCreate()
+        } catch (t: Throwable) {
+            appendFallbackCrashLog(t)
+            try {
+                Sentry.captureException(t)
+                Sentry.flush(5_000)
+            } catch (_: Throwable) {}
+            throw t
+        }
+    }
 
+    private fun doOnCreate() {
         Preferences.initialize(this)
 
         initializeSentry()
@@ -49,9 +69,7 @@ class App : Application() {
             }
         }
 
-        DatabaseHolder().initDb(
-            this
-        )
+        DatabaseHolder().initDb(this)
 
         SpeechHelper.initTTS(this)
 
@@ -60,6 +78,17 @@ class App : Application() {
 
         // initialize all translation engines
         updateAllTranslationEngines()
+    }
+
+    private fun appendFallbackCrashLog(t: Throwable) {
+        try {
+            val sw = StringWriter()
+            t.printStackTrace(PrintWriter(sw))
+            val ts = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date())
+            val entry = "=== STARTUP CRASH $ts ===\n$sw\n"
+            val logFile = File(filesDir, "crashlog.txt")
+            FileOutputStream(logFile, true).use { it.write(entry.toByteArray(Charsets.UTF_8)) }
+        } catch (_: Throwable) {}
     }
 
     private fun buildEngineList(settingsProvider: EnginePreferencesProviderImpl): List<TranslationEngine> {
@@ -99,7 +128,7 @@ class App : Application() {
     }
 
     companion object {
-        lateinit var translationEngines: List<TranslationEngine>
+        var translationEngines: List<TranslationEngine> = emptyList()
 
         fun updateAllTranslationEngines() {
             for (engine in translationEngines) {
